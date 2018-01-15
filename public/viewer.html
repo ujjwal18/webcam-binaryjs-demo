@@ -2,7 +2,7 @@
 <html>
 <head>
     <title>Webcam Binary.JS Demo</title>
-    <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
+    <script src="http://cdn.binaryjs.com/0/binary.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
     <script>
 
@@ -55,44 +55,38 @@
 
                 client.on('open', function (s) {
 
-                    stream = client.createStream('toserver');
+                    stream = client.createStream('viewer');
 
                     // data coming from the server...
                     // we will draw it into the receiver canvas
                 });
 
+                client.on('stream', function (s, meta) {
 
-                // gets called in an certain interval and grabs the current video frame
-                // and draws it into a canvas
+                    if (meta === 'fromserver') {
 
-                var grabLoop = function () {
-                    try {
-                        senderContext.drawImage(videoEl, 0, 0, settings.canvasWidth, settings.canvasHeight);
-                    } catch (e) {}
+                        s.on('data', function (data) {
+                            console.log("hay data");
+                            // data is from the type 'ArrayBuffer'
+                            // we need to build a Uint8Array out of it
+                            // to be able to access the actual data
 
-                    var imageData = senderContext.getImageData(0, 0, settings.canvasWidth, settings.canvasHeight);
-                    if (typeof stream !== 'undefined') {
-                        stream.write(imageData.data);
+                            var dataArr = new Uint8Array(data);
+
+                            for (var i = 0, len = dataArr.length; i < len; i++) {
+                                imageFrame.data[receiverPos] = dataArr[i];
+                                receiverPos++;
+                                if (receiverPos % receiverDataLength === 0) {
+                                    receiverPos = 0;
+                                    receiverContext.putImageData(imageFrame, 0, 0);
+                                }
+                            }
+
+                        });
+
                     }
-                    setTimeout(grabLoop, settings.grabRate);
-                };
+                });
 
-                // gets called as soon we have access to the camera..
-
-                var gUsuccess = function (stream) {
-                    videoEl.src = window.URL.createObjectURL(stream);
-                    videoEl.play();
-                    console.log('success');
-                    setTimeout(grabLoop, settings.grabRate);
-                };
-
-                // no camera access...
-
-                var gUfail = function () {
-                    console.log('no webcam access :-(');
-                };
-
-                userMedia({video: true}, gUsuccess, gUfail);
             });
 
         })(document);
