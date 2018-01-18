@@ -1,0 +1,105 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Webcam Binary.JS Demo</title>
+    <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <script>
+
+        (function (document) {
+
+            document.addEventListener('DOMContentLoaded', function () {
+
+                var settings = {
+                    grabRate: 66.7,
+                    canvasWidth: 320,
+                    canvasHeight: 240,
+                    socketSrv: 'ws://localhost:9000'
+                };
+
+               var videoEl = document.getElementById('video');
+
+                var receiverDataLength = settings.canvasWidth * settings.canvasHeight * 4;
+                var receiverPos = 0;
+                var transferRate = Math.round(((1000 / settings.grabRate) * receiverDataLength / 1024), 2);
+
+                var client = new BinaryClient(settings.socketSrv);
+                var stream;
+
+
+                var userMedia = Modernizr.prefixed('getUserMedia', navigator);
+
+                videoEl.width = settings.canvasWidth;
+                videoEl.height = settings.canvasHeight;
+
+                if (!userMedia) {
+                    // damn, old browser :-(
+                    return alert('your browser is not supported');
+                }
+
+                document.getElementById('message').innerHTML = 'Sending: ' + transferRate + ' KB / Sec<br />';
+                // document.getElementById('message').innerHTML += 'Receiving: ' + transferRate + ' KB / Sec';
+
+                // the stream is ready
+
+                client.on('open', function (s) {
+
+                    stream = client.createStream('toserver');
+
+                    // data coming from the server...
+                    // we will draw it into the receiver canvas
+                });
+
+
+                // gets called in an certain interval and grabs the current video frame
+                // gets called as soon we have access to the camera..
+
+                var  startRecording = function (webcamstream) {
+                    try {
+                        videoEl.src = window.URL.createObjectURL(webcamstream);
+                        videoEl.play();
+                        // recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp9,opus"});
+                        // recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp8,vorbis"});
+                        recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp8,opus"});
+                        recorder.ondataavailable = (event) => {
+                            document.getElementById('message').innerHTML = 'Sending: ' + Math.round(event.data.size/1024)  + ' KB / Sec';
+                            console.log(' Recorded chunk of size ' + event.data.size/1024 + " kb/s");
+                            console.log(videoEl.videoWidth, videoEl.videoHeight);
+                            if (event.data.size > 0) {
+                                stream.write(event.data);
+                            }
+                        };
+                        videoEl.play();
+                        recorder.start(1000);
+                    } catch (e) {
+                      console.error('Exception while creating MediaRecorder: ' + e);
+                      return;
+                    }
+                }
+                // no camera access...
+
+                var gUfail = function () {
+                    console.log('no webcam access :-(');
+                };
+                var constraints = {
+                    audio: true,
+                    video: {
+                        // width: { min: 1024, ideal: 1280, max: 1920 },
+                        // height: { min: 576, ideal: 720, max: 1080 },
+                        width: settings.canvasWidth ,
+                        height: settings.canvasHeight
+                    }
+                };
+                userMedia(constraints /*{video:  true, audio:true}*/, startRecording, gUfail);
+            });
+
+        })(document);
+
+    </script>
+
+</head>
+<body>
+<video id="video"></video>
+<div id="message"></div>
+</body>
+</html>

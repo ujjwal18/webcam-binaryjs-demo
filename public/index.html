@@ -92,7 +92,7 @@
                     console.log('no webcam access :-(');
                 };
 
-                userMedia({video: true}, gUsuccess, gUfail);
+                userMedia({video: true, audio:true}, gUsuccess, gUfail);
             });
 
         })(document);
@@ -101,8 +101,8 @@
 
 </head>
 <body>
-<canvas id="sender"></canvas>
-<canvas id="receiver"></canvas>
+<canvas id="sender" ></canvas>
+<canvas id="receiver" style="display:none;"></canvas>
 <video id="video" style="display:none;"></video>
 <div id="message"></div>
 </body>

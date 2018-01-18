@@ -1,8 +1,10 @@
 var http = require('http')
   , url = require('url')
   , fs = require('fs')
-  , indexHtml = fs.readFileSync('./public/index.html')
-  , otroHtml = fs.readFileSync('./public/viewer.html')
+  // , indexHtml = fs.readFileSync('./public/index.html')
+  // , otroHtml = fs.readFileSync('./public/viewer.html')
+  , sendHtml = fs.readFileSync('./public/send.html')
+  , reciveHtml = fs.readFileSync('./public/recive.html')
   , BinaryServer = require('binaryjs').BinaryServer
   , binaryServer = BinaryServer({port: 9000});
 
@@ -11,10 +13,15 @@ var http = require('http')
 var server = http.createServer(function(request, response) {
   var pathname = url.parse(request.url).pathname;
   response.writeHead(200);
-  if (pathname == '/') {
-    response.end(indexHtml);  
-  } else if (pathname == '/otro') {
-    response.end(otroHtml);
+  // if (pathname == '/') {
+  //   response.end(indexHtml);  
+  // } else if (pathname == '/otro') {
+  //   response.end(otroHtml);
+  // };
+   if (pathname == '/') {
+    response.end(sendHtml);  
+  } else if (pathname == '/recive') {
+    response.end(reciveHtml);
   };
   
 });

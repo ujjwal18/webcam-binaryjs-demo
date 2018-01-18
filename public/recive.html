@@ -1,0 +1,97 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Webcam Binary.JS Demo</title>
+    <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <script>
+    var sourceBuffer; 
+        (function (document) {
+            document.addEventListener('DOMContentLoaded', function () {
+
+                var settings = {
+                    grabRate: 66.7,
+                    canvasWidth: 320,
+                    canvasHeight: 240,
+                    socketSrv: 'ws://localhost:9000'
+                };
+                var videoEl = document.getElementById('video');
+                videoEl.crossOrigin = 'anonymous';
+                videoEl.width = settings.canvasWidth;
+                videoEl.height = settings.canvasHeight;
+                // var mimeCodec = "video/webm\;codecs=vp9,opus";
+                // var mimeCodec = "video/webm\;codecs=vp8,vorbis";
+                var mimeCodec = "video/webm\;codecs=vp8,opus";
+
+                var receiverDataLength = settings.canvasWidth * settings.canvasHeight * 4;
+                var receiverPos = 0;
+                var transferRate = Math.round(((1000 / settings.grabRate) * receiverDataLength / 1024), 2);
+
+                var client = new BinaryClient(settings.socketSrv);
+                var stream;
+                var userMedia = Modernizr.prefixed('getUserMedia', navigator);
+                if (!userMedia) {
+                    // damn, old browser :-(
+                    return alert('your browser is not supported');
+                }
+
+                // document.getElementById('message').innerHTML = 'Sending: ' + transferRate + ' KB / Sec<br />';
+                document.getElementById('message').innerHTML += 'Receiving: ' + transferRate + ' KB / Sec';
+                var playPromise;
+                    
+                if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
+                  var mediaSource = new MediaSource();
+                  videoEl.src = window.URL.createObjectURL(mediaSource);
+                  mediaSource.addEventListener('sourceopen', function(){
+                    sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                    playPromise = videoEl.play();
+                    if (playPromise !== undefined) {
+                      playPromise.then(function() {
+                        // Automatic playback started!
+                      }).catch(function(error) {
+                        console.log(error);
+                        // Automatic playback failed.
+                        // Show a UI element to let the user manually start playback.
+                      });
+                    }
+                  }, false);
+                } else {
+                  console.error('Unsupported MIME type or codec: ', mimeCodec);
+                }
+                // the stream is ready
+
+                client.on('open', function (s) {
+
+                    stream = client.createStream('viewer');
+
+                    // data coming from the server...
+                    // we will draw it into the receiver canvas
+                });
+                client.on('stream', function (s, meta) {
+
+                    if (meta === 'fromserver') {
+                        // video.play();
+                        s.on('data', function (data) {
+                            console.log("hay data");
+                            // console.log(data);
+                            console.log(data.byteLength);
+                            document.getElementById('message').innerHTML = 'Sending: ' + Math.round( data.byteLength/1024) + ' KB / Sec';
+                            console.log(' Recived chunk of size ' + data.byteLength/1024 + " kb/s");
+                            sourceBuffer.appendBuffer(data);
+                        });
+
+                    }
+                });
+
+            });
+
+        })(document);
+
+    </script>
+
+</head>
+<body>
+<video id="video" ></video>
+<div id="message"></div>
+</body>
+</html>
