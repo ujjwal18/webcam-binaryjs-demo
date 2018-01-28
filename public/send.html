@@ -2,8 +2,10 @@
 <html>
 <head>
     <title>Webcam Binary.JS Demo</title>
-    <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script> -->
+    <script src="/js/binary.min.js"></script>
+    <script src="/js/modernizr.min.js"></script>
     <script>
 
         (function (document) {
@@ -14,7 +16,7 @@
                     grabRate: 66.7,
                     canvasWidth: 320,
                     canvasHeight: 240,
-                    socketSrv: 'ws://localhost:9000'
+                    socketSrv: 'ws://'+window.location.hostname+':9000'
                 };
 
                var videoEl = document.getElementById('video');
@@ -58,12 +60,24 @@
                     try {
                         videoEl.src = window.URL.createObjectURL(webcamstream);
                         videoEl.play();
+                        var currframe = video.webkitDecodedFrameCount;
+                        function myTimer() {
+                            var d= video.webkitDecodedFrameCount;
+                            console.log(d - currframe);
+                            currframe=d;
+                        }
+                        setInterval(function(){ myTimer() }, 1000);
                         // recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp9,opus"});
                         // recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp8,vorbis"});
-                        recorder = new MediaRecorder(webcamstream, {mimeType : "video/webm\;codecs=vp8,opus"});
+                        recorder = new MediaRecorder(webcamstream, {
+                            audioBitsPerSecond: 6000, // min: 100bps max: 6000bps
+                            videoBitsPerSecond: -5000, // min: -5000bps max: 100000bps
+                            // mimeType : "audio/webm\;codecs=opus"
+                            mimeType : "video/webm\;codecs=vp8,opus"
+                        });
                         recorder.ondataavailable = (event) => {
                             document.getElementById('message').innerHTML = 'Sending: ' + Math.round(event.data.size/1024)  + ' KB / Sec';
-                            console.log(' Recorded chunk of size ' + event.data.size/1024 + " kb/s");
+                            console.log(' Recorded chunk of size ' + event.data.size/100 + " kb/s");
                             console.log(videoEl.videoWidth, videoEl.videoHeight);
                             if (event.data.size > 0) {
                                 stream.write(event.data);
@@ -82,12 +96,18 @@
                     console.log('no webcam access :-(');
                 };
                 var constraints = {
-                    audio: true,
+                    audio:{
+                        echoCancellation: true
+                    },
                     video: {
                         // width: { min: 1024, ideal: 1280, max: 1920 },
                         // height: { min: 576, ideal: 720, max: 1080 },
                         width: settings.canvasWidth ,
-                        height: settings.canvasHeight
+                        height: settings.canvasHeight,
+                        frameRate: 5.0,
+                        // facingMode: [ "user", "left" ],
+                        // echoCancellation: true,
+
                     }
                 };
                 userMedia(constraints /*{video:  true, audio:true}*/, startRecording, gUfail);
@@ -99,7 +119,7 @@
 
 </head>
 <body>
-<video id="video"></video>
+<video id="video" controls="true"></video>
 <div id="message"></div>
 </body>
 </html>

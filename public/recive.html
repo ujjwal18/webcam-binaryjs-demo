@@ -2,10 +2,14 @@
 <html>
 <head>
     <title>Webcam Binary.JS Demo</title>
-    <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/binaryjs/0.2.1/binary.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/modernizr/2.7.1/modernizr.min.js"></script> -->
+    <script src="/js/binary.min.js"></script>
+    <script src="/js/modernizr.min.js"></script>
     <script>
     var sourceBuffer; 
+    var queue = [];
+    
         (function (document) {
             document.addEventListener('DOMContentLoaded', function () {
 
@@ -13,7 +17,7 @@
                     grabRate: 66.7,
                     canvasWidth: 320,
                     canvasHeight: 240,
-                    socketSrv: 'ws://localhost:9000'
+                    socketSrv: 'ws://'+window.location.hostname+':9000'
                 };
                 var videoEl = document.getElementById('video');
                 videoEl.crossOrigin = 'anonymous';
@@ -22,6 +26,7 @@
                 // var mimeCodec = "video/webm\;codecs=vp9,opus";
                 // var mimeCodec = "video/webm\;codecs=vp8,vorbis";
                 var mimeCodec = "video/webm\;codecs=vp8,opus";
+                // var mimeCodec = "audio/webm\;codecs=opus";
 
                 var receiverDataLength = settings.canvasWidth * settings.canvasHeight * 4;
                 var receiverPos = 0;
@@ -44,10 +49,30 @@
                   videoEl.src = window.URL.createObjectURL(mediaSource);
                   mediaSource.addEventListener('sourceopen', function(){
                     sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                    sourceBuffer.addEventListener('updateend', function() {
+                      if ( queue.length ) {
+                        sourceBuffer.appendBuffer(queue.shift());
+                      }
+                    }, false);
+                    queue.push = function( buffer ) {
+                         if ( !sourceBuffer.updating ) {
+                                sourceBuffer.appendBuffer( buffer ) 
+                              } else { 
+                                Array.prototype.push.call( this, buffer ) 
+                                } 
+                        }
+
                     playPromise = videoEl.play();
                     if (playPromise !== undefined) {
                       playPromise.then(function() {
                         // Automatic playback started!
+                        var currframe = video.webkitDecodedFrameCount;
+                        function myTimer() {
+                            var d= video.webkitDecodedFrameCount;
+                            console.log(d - currframe);
+                            currframe=d;
+                        }
+                        setInterval(function(){ myTimer() }, 1000);
                       }).catch(function(error) {
                         console.log(error);
                         // Automatic playback failed.
@@ -77,7 +102,15 @@
                             console.log(data.byteLength);
                             document.getElementById('message').innerHTML = 'Sending: ' + Math.round( data.byteLength/1024) + ' KB / Sec';
                             console.log(' Recived chunk of size ' + data.byteLength/1024 + " kb/s");
-                            sourceBuffer.appendBuffer(data);
+                            if(data.byteLength){
+                                
+                                 queue.push(data)
+                                //sourceBuffer.appendBuffer(data);
+                                playPromise = videoEl.play();
+                            }else{
+
+                                videoEl.paush();
+                            }
                         });
 
                     }
@@ -91,7 +124,7 @@
 
 </head>
 <body>
-<video id="video" ></video>
+<video id="video" controls="true" ></video>
 <div id="message"></div>
 </body>
 </html>
